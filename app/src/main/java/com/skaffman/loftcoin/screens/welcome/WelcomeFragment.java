@@ -42,11 +42,8 @@ public class WelcomeFragment extends Fragment {
     @BindView(R.id.subtitle)
     TextView subtitle;
 
-
     public WelcomeFragment() {
-        // Required empty public constructor
     }
-
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,

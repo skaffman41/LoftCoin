@@ -23,12 +23,6 @@ public class WelcomeActivity extends AppCompatActivity {
         context.startActivity(starter);
     }
 
-    public static void startInNewTask(Context context) {
-        Intent starter = new Intent(context, WelcomeActivity.class);
-        starter.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(starter);
-    }
-
     @BindView(R.id.pager)
     ViewPager pager;
 
@@ -37,6 +31,12 @@ public class WelcomeActivity extends AppCompatActivity {
 
     @BindView(R.id.start_btn)
     Button startBtn;
+
+    public static void startInNewTask(Context context) {
+        Intent starter = new Intent(context, WelcomeActivity.class);
+        starter.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(starter);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
