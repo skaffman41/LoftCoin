@@ -12,7 +12,7 @@ public interface Api {
     String CONVERT = "USD,EUR,RUB";
 
     @GET("cryptocurrency/listings/latest")
-    @Headers("X-CMC_PRO_API_KEY: 9ee29142-146d-4e89-825d-385ab52b618a")
+    @Headers("X-CMC_PRO_API_KEY:9940d22c-d93e-4167-8556-9ae4b7d3c2c9")
     Call<RateResponse> rates(@Query("convert") String convert);
 
 }
