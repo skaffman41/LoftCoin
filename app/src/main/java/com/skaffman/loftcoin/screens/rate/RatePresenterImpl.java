@@ -1,19 +1,16 @@
 package com.skaffman.loftcoin.screens.rate;
 
+
 import com.skaffman.loftcoin.data.api.Api;
-import com.skaffman.loftcoin.data.api.model.Coin;
-import com.skaffman.loftcoin.data.api.model.RateResponse;
 import com.skaffman.loftcoin.data.db.Database;
-import com.skaffman.loftcoin.data.db.model.CoinEntity;
 import com.skaffman.loftcoin.data.db.model.CoinEntityMapper;
 import com.skaffman.loftcoin.data.prefs.Prefs;
 
-import java.util.List;
-
 import androidx.annotation.Nullable;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 import timber.log.Timber;
 
 public class RatePresenterImpl implements RatePresenter {
@@ -22,6 +19,7 @@ public class RatePresenterImpl implements RatePresenter {
     private Api api;
     private Database database;
     private CoinEntityMapper coinEntityMapper;
+    private CompositeDisposable disposables = new CompositeDisposable();
 
     @Nullable
     private RateView view;
@@ -40,54 +38,56 @@ public class RatePresenterImpl implements RatePresenter {
 
     @Override
     public void detachView() {
+        disposables.dispose();
         view = null;
     }
 
     @Override
     public void getRate() {
-        List<CoinEntity> coins = database.getCoins();
+//        List<CoinEntity> coins = database.getCoins();
+//
+//        if (view != null) {
+//            view.setCoins(coins);
+//        }
 
-        if (view != null) {
-            view.setCoins(coins);
-        }
-    }
-
-    private void loadRate() {
-        Call<RateResponse> call = api.rates(Api.CONVERT);
-
-        call.enqueue(new Callback<RateResponse>() {
-            @Override
-            public void onResponse(Call<RateResponse> call, Response<RateResponse> response) {
-
-                if (response.body() != null) {
-                    List<Coin> coins = response.body().data;
-                    List<CoinEntity> coinEntities = coinEntityMapper.map(coins);
-
-                    database.saveCoins(coinEntities);
-
+        Disposable disposable = database.getCoins()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(coinEntities -> {
                     if (view != null) {
                         view.setCoins(coinEntities);
                     }
-                }
+                }, Timber::e);
 
-                if (view != null) {
-                    view.setRefreshing(false);
-                }
-            }
+        disposables.add(disposable);
 
-            @Override
-            public void onFailure(Call<RateResponse> call, Throwable t) {
-                Timber.e(t);
+    }
 
-                if (view != null) {
-                    view.setRefreshing(false);
-                }
-            }
-        });
+    private void loadRate() {
+        Disposable disposable = api.rates(Api.CONVERT)
+                .subscribeOn(Schedulers.io())
+                .map(rateResponse -> rateResponse.data)
+                .map(coins -> coinEntityMapper.map(coins))
+                .doOnNext(coinEntities -> database.saveCoins(coinEntities))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(coinEntities -> {
+                            if (view != null) {
+                                view.setRefreshing(false);
+                            }
+                        }, throwable -> {
+                            Timber.e(throwable);
+                            if (view != null) {
+                                view.setRefreshing(false);
+                            }
+                        }
+                );
+
+        disposables.add(disposable);
     }
 
     @Override
     public void onRefresh() {
         loadRate();
     }
+
 }
