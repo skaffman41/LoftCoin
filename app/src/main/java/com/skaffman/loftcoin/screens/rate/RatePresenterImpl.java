@@ -1,8 +1,14 @@
 package com.skaffman.loftcoin.screens.rate;
 
 import com.skaffman.loftcoin.data.api.Api;
+import com.skaffman.loftcoin.data.api.model.Coin;
 import com.skaffman.loftcoin.data.api.model.RateResponse;
+import com.skaffman.loftcoin.data.db.Database;
+import com.skaffman.loftcoin.data.db.model.CoinEntity;
+import com.skaffman.loftcoin.data.db.model.CoinEntityMapper;
 import com.skaffman.loftcoin.data.prefs.Prefs;
+
+import java.util.List;
 
 import androidx.annotation.Nullable;
 import retrofit2.Call;
@@ -12,15 +18,19 @@ import timber.log.Timber;
 
 public class RatePresenterImpl implements RatePresenter {
 
-    Prefs prefs;
-    Api api;
+    private Prefs prefs;
+    private Api api;
+    private Database database;
+    private CoinEntityMapper coinEntityMapper;
 
     @Nullable
     private RateView view;
 
-    public RatePresenterImpl(Prefs prefs, Api api) {
+    public RatePresenterImpl(Prefs prefs, Api api, Database database, CoinEntityMapper coinEntityMapper) {
         this.prefs = prefs;
         this.api = api;
+        this.database = database;
+        this.coinEntityMapper = coinEntityMapper;
     }
 
     @Override
@@ -35,16 +45,32 @@ public class RatePresenterImpl implements RatePresenter {
 
     @Override
     public void getRate() {
+        List<CoinEntity> coins = database.getCoins();
 
+        if (view != null) {
+            view.setCoins(coins);
+        }
+    }
+
+    private void loadRate() {
         Call<RateResponse> call = api.rates(Api.CONVERT);
 
         call.enqueue(new Callback<RateResponse>() {
             @Override
             public void onResponse(Call<RateResponse> call, Response<RateResponse> response) {
-                RateResponse body = response.body();
 
-                if (view != null && body != null) {
-                    view.setCoins(body.data);
+                if (response.body() != null) {
+                    List<Coin> coins = response.body().data;
+                    List<CoinEntity> coinEntities = coinEntityMapper.map(coins);
+
+                    database.saveCoins(coinEntities);
+
+                    if (view != null) {
+                        view.setCoins(coinEntities);
+                    }
+                }
+
+                if (view != null) {
                     view.setRefreshing(false);
                 }
             }
@@ -62,6 +88,6 @@ public class RatePresenterImpl implements RatePresenter {
 
     @Override
     public void onRefresh() {
-        getRate();
+        loadRate();
     }
 }
